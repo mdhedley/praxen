@@ -115,13 +115,26 @@ as input, so the generator work is *better* after this ships.
   chains present per target; remit-overlay audit passes the
   job-description rule (only genuine governance attached; empty rule sets
   never remarked on).
-- **No collateral damage:** standard-mode scan byte-identical — with one
-  recorded exception (Steve, 2026-08-26): new scans additionally emit the
-  optional `scan.remit_version` provenance field when the remit declares a
-  version; score-inert, absent on version-less remits, pre-2.0 JSONs
-  unaffected; full test
-  suite green; `claude plugin validate` clean; `v1.3-opus5` baselines
-  untouched (byte-gates hold — nothing in 2.0 re-scans or re-scores).
+- **No collateral damage:** ~~standard-mode scan byte-identical~~ —
+  **superseded 2026-10-18.** The gate as written no longer holds and should
+  not be read as if it does. Standard-mode output changed twice, both
+  deliberately, and neither moves a score:
+  - *Exception 1 (Steve, 2026-08-26):* new scans emit the optional
+    `scan.remit_version` provenance field when the remit declares a version;
+    absent on version-less remits.
+  - *Exception 2 (Steve, 2026-10-18):* the findings schema moves **3.0 ->
+    4.0** and every scan now emits the required `standards` block naming the
+    OWASP editions it was scored against. See *Schema 4.0* below.
+
+  What still holds: **no score moves** — no re-scan, no re-score, no
+  re-freeze, and `weighted_overall` and every severity count are byte-stable
+  across the release. What changed and the gate used to deny: the
+  `v1.3-opus5` baselines are **not** untouched. Both current-schema findings
+  sets (`v1.3-opus5`, `v1.2-opus5`), the three showcase examples and the
+  twelve baseline threat models were **re-stamped and re-rendered** from
+  unchanged scan data, because a required field and a schema major cannot be
+  added without them. Full suite green and `claude plugin validate` clean
+  remain requirements.
 - **Cost documentation:** extraction ≈ 0.4–0.5× a standard scan (probe
   measurement) — publish as budgeting guidance like the thinking-modes
   cost section, from measured runs.
@@ -139,6 +152,35 @@ as input, so the generator work is *better* after this ships.
 - #261 (asked alongside): Steve selected **"Fold into 2.0"** — the
   x-high checkpoint-path fix and both THINKING_MODES nits ride this
   release; no 1.3.1.
+
+## Schema 4.0 — OWASP edition provenance (added 2026-10-18)
+
+Not in the original plan; added when review found that neither report said
+which **edition** of each OWASP list its codes came from. The codes are not
+stable across editions — `LLM03` is *Supply Chain* in the 2025 LLM Top 10
+and *Excessive Agency* in 2026, and `LLM04`/`LLM10` also changed meaning —
+so an archived report was ambiguous, and the only disambiguator was a
+heuristic inside `render.py` that reconstructed the edition from
+`praxen_version`. Nothing recorded it; the agentic edition was a hardcoded
+template literal and the MCP edition appeared nowhere at all.
+
+- **Findings JSON:** required `standards` block (`owasp_llm`,
+  `owasp_agentic`, `owasp_mcp`), injected by `manifest_to_findings.py` from
+  the new `schema.STANDARDS` — never authored. Shape-checked, not
+  value-pinned, so a document recording an older edition stays valid.
+- **Threat-model graph:** same block, folded into the unreleased contract
+  **v1.5**. Values *are* pinned there, because a graph is written directly
+  by the extraction pass with no converter to inject them.
+- **Schema 3.0 -> 4.0, not 3.1.** `STABILITY.md` makes adding a required
+  field a schema MAJOR, and 2.0 is a product MAJOR — the right release to
+  spend one in. The interim 3.1 was never merged and is not part of the
+  history. This removed a policy carve-out rather than adding one.
+- **Reports** state the editions in the findings HTML footer, both coverage
+  headings, the TXT `Built on` line, and the threat-model masthead and
+  footer.
+
+Done before GA because the field is required: adding it after 2.0 ships
+would be a second breaking schema change for no reason.
 
 ## Release mechanics
 
@@ -182,8 +224,22 @@ first beta design; deletion is Steve's call).
 
 ## Non-goals
 
-No score movement, no freeze, no re-baseline, no findings-schema change,
-no report-template change to the analysis report, no mermaid/JS deps, no
+No score movement, no freeze, no re-baseline, no mermaid/JS deps, no
 MAESTRO lens, no ATT&CK/ATLAS export, no #198 (2.1's opener), no
 multi-run graph aggregation as a user-facing deliverable. 2.1 is the
 detection/calibration release and grades `v2.1-opus5` vs `v1.3-opus5`.
+
+**Two non-goals were spent deliberately** (2026-10-18). This list read "no
+findings-schema change, no report-template change to the analysis report";
+both are now false, and the entries are struck rather than quietly dropped:
+
+- ~~no findings-schema change~~ — the findings schema moves **3.0 -> 4.0**
+  for the required `standards` block (see *Schema 4.0* above). A required
+  field cannot wait for 2.1 without making that a second breaking change.
+- ~~no report-template change to the analysis report~~ —
+  `report_template.html` gains the footer line naming the editions and one
+  CSS rule for it (+5/-2), and the agentic coverage heading's hardcoded
+  `(2026)` becomes a placeholder. Nothing else in the analysis report moved.
+
+Both are presentation and provenance only: **no score moves**, and the
+release stays freeze-independent.
